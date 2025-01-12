@@ -16,22 +16,22 @@ sigma_c_incertitude = 0.01*sigma_c      #Marge d'erreur de 1%
 sigma_p_max = 1e-7                      #Conductivite du blindage
 
 
-#Fonctions importantes
+#Calcul de R, L, C et G
 def calculInductance(b_a_ratio):
     #Calcul de L par unite de longeur H/m.
-    return ((mu)/(2*np.pi))*np.ln(b_a_ratio)
+    return ((mu)/(2*np.pi))*np.log(b_a_ratio)
 def calculResistance(omega, a, b):
     #Calcul de R par unite de longeur en Ω/m.
     return 0.5*np.sqrt((mu*omega)/(2*np.pi**2*sigma_c))*((1/a)+(1/b))
 def calculCapacitance(b_a_ratio):
     #Calcul de C par unite de longeur F/m.
-    return (2*np.pi*cst.epsilon_0)/(np.ln(b_a_ratio))
+    return (2*np.pi*cst.epsilon_0)/(np.log(b_a_ratio))
 def calculConductance(sigma, b_a_ratio):
     #Calcul de G par unite de longeur S/m.
-    return (2*np.pi*sigma)/(np.ln(b_a_ratio))
+    return (2*np.pi*sigma)/(np.log(b_a_ratio))
 
 
-
+#Calcul de Z et Y base sur R, L, C, G et omega
 def calculImpedanceZ(omega, R, L):
     #calcul de l'impendace par unite de longeur Z
     return R + 1j*omega*L
@@ -40,167 +40,144 @@ def calculAdmitanceY(omega, C, G):
     return G + 1j*omega*C
 
 
-
+#Calcul de Alpha, Beta et Gamma
 def calculGamma(Y,Z):
     #calcul de gamma 
     return np.sqrt(Y*Z)
-
 def calculAlpha(R,L,C):
     #calcul de alpha
     return (R/2)*np.sqrt(C/L)
-
 def calculBeta(omega,L,C):
     #calcul de beta
     return omega*np.sqrt(L*C)
 
 
-
+#Calcul de la vitessge de groupe
 def calculVg(L,C):
     #calcul de la vitesse de groupe
     return 1/np.sqrt(L*C)
 
+
+#Calcul de V1 et V2, pour les fonction V(z,t) et i(z,t)
 def calculer_V1_V2(V_incident, Z_0, Z_L):
-    #Calcul de V_1 et V_2
-    """
-    V_incident : amplitude de l'onde incidente (V)
-    Z_0 : Impedance characteristique de la ligne (Ω)
-    Z_L : Impedance de la charge a l'extremite de la ligne (Ω)
-    """
     C_RV = (Z_L-Z_0)/(Z_L+Z_0)
     C_TV = 1 + C_RV
-
     V_1 = V_incident*C_TV
     V_2 = V_incident*C_RV
     return V_1, V_2
 
 
-
+#Calcul de V(z,t) et i(z,t)
 def calculTension(V_1,V_2,z,t,alpha,beta,omega):
-    #Calcul de V(z,t)
     return V_1*math.exp(alpha*z)*math.exp(1j*omega*t + beta*z) + V_2*math.exp(-alpha*z)*math.exp(1j*omega*t - beta*z)
-
 def calculCourant(V_1,V_2,Z,Y,z,t,alpha,beta,omega):
-    #Calcul de i(z,t)
     return (-V_1/np.sqrt(Z/Y))*math.exp(alpha*z)*math.exp(1j*omega*t + beta*z) + (V_2/np.sqrt(Z/Y))*math.exp(-alpha*z)*math.exp(1j*omega*t - beta*z)
 
+
+#Calcul de Z_0
 def calculZ_0(L,C):
-    #Calcul de Z_0
     return np.sqrt(L/C)
 
 
-
+#Lire et ecrire Data a un fichier.
+def ecrireData():
+    try:
+        with open("LaboratoireData.txt", "a") as file:
+            while True:
+                print("\n Le format: [omega; V_I; a; b]")
+                omega = input("> ")
+                V_I = input("> ")
+                a = input("> ")
+                b = input("> ")
+                file.write(omega + ";" + V_I + ";" + a + ";" + b + "\n")
+                choix_1 = input("Ajouter un autre point de data? [Y/N]: ")
+                if choix_1.lower() == "y":
+                    pass
+                elif choix_1.lower() == "n":
+                    break
+                else:
+                    print("Choix Invalide")
+                    break
+    except IOError as e:
+        print(f"Une Erreur a eu lieu l'or de l'ecriture au fichier.")
 def lireData():
     try:
         with open("LaboratoireData.txt", "r") as file:
             print("\nLes Données du Fichier:")
             for line in file:
-                # Strip the newline character and split by ";"
                 data = line.strip().split(";")
-                
-                # Display the cleaned data
-                print(f"Omega: {data[0]}, V_I: {data[1]}, a: {data[2]}, b: {data[3]}")
-                
-                #calcul des fonctions:
-                b_a_ratio = data[3]/data[2]
-                L = calculInductance(b_a_ratio)
-                R = calculResistance(data[0],data[2],data[3])
-                C = calculCapacitance(b_a_ratio)
-                G = calculConductance(sigma_c, b_a_ratio)
-
-                #calcul impedances
-                Z = calculImpedanceZ(data[0],R,L)
-                Y = calculAdmitanceY(data[0],C,G)
-
-                #calcul de alpha, beta et gamma
-                gamma = calculGamma(Y,Z)
-                alpha = calculAlpha(R,L,C)
-                beta = calculBeta(data[0],L,C)
-
-                #calcul de la vitesse de groupe et de V1 et V2
-                vg = calculVg(L,C)
-                Z_0 = calculZ_0(L,C)
-
-
-                #A faire
-                Z_L = calculZ_L()
-                V_1, V_2 = calculer_V1_V2(data[1],Z_0,Z_L)
-
-                
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                if len(data) != 4:
+                    raise ValueError(f"Invalid line format: {line.strip()}")
+                yield float(data[0]), float(data[1]), float(data[2]), float(data[3])
     except FileNotFoundError:
         print("Erreur: Le fichier 'LaboratoireData.txt' n'existe pas.")
     except Exception as e:
         print(f"Une erreur est survenue: {e}")
 
 
-
-
-
-def main():
-    while True:
+#Le menu principal
+def menu():
         print("\nMenu Principal:")
         print("1. Ajoute de l'information")
         print("2. Produit des graphiques")
         print("3. Trouve alpha, Z_0 et vg")
         print("4. Quitter")
-        choix = input("> ")
-        if choix == "1":
+
+
+def main():
+    while True:
+        menu()
+        choix = int(input("> "))
+
+        #ajouter du data a un document
+        if choix == 1:
+            ecrireData()
+
+        #lire l'information du document et produit des graphiques
+        elif choix == 2:
             try:
-                with open("LaboratoireData.txt", "a") as file:
-                    while True:
-                        print("\n Le format: [omega; V_I; a; b]")
-                        omega = input("> ")
-                        V_I = input("> ")
-                        a = input("> ")
-                        b = input("> ")
-                        file.write(omega + ";" + V_I + ";" + a + ";" + b + "\n")
-                        choix_1 = input("Ajouter un autre point de data? [Y/N]: ")
-                        if choix_1.lower() == "y":
-                            pass
-                        elif choix_1.lower() == "n":
-                            break
-                        else:
-                            print("Choix Invalide")
-                            break
+                # Create plots
+                fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+                for O, V, a, b in lireData():
+                    #calculs de base
+                    b_a_ratio = b / a
+                    L = calculInductance(b_a_ratio)
+                    R = calculResistance(O, a, b)
+                    C = calculCapacitance(b_a_ratio)
+                    G = calculConductance(sigma_c, b_a_ratio)
+                    
+                    #calcul impedances
+                    Z = calculImpedanceZ(O,R,L)
+                    Y = calculAdmitanceY(O,C,G)
 
-            except IOError as e:
-                print(f"Une Erreur a eu lieu l'or de l'ecriture au fichier.")
+                    #calcul de alpha, beta et gamma
+                    gamma = calculGamma(Y,Z)
+                    alpha = calculAlpha(R,L,C)
+                    beta = calculBeta(O,L,C)
 
-        elif choix == "2":
-            while True:
-                lireData()
-
+                    #calcul de la vitesse de groupe et de V1 et V2
+                    vg = calculVg(L,C)
+                    Z_0 = calculZ_0(L,C)
 
 
+                    #A faire
+                    Z_L = calculZ_L()
+                    V_1, V_2 = calculer_V1_V2(V,Z_0,Z_L)
+
+                # End of data processing
+                print("Fin de la lecture du fichier.")
+            except Exception as e:
+                print(f"Une erreur s'est produite: {e}")
 
 
-        elif choix == "3":
+
+
+        elif choix == 3:
             pass
 
 
-
-
-
-        elif choix == "4":
+        elif choix == 4:
             break
-
-
-
-
 
         else:
             print("Choix invalide")
@@ -247,6 +224,41 @@ a) le programme lit ligne par ligne le fichier "LaboratoireData"
         2) produit des graphiques en 2 dimensions:    axe des x, t;  axe des y, V(z,t) ou i(z,t) avec des valeurs de z discretes.
 b) passe a la prochaine ligne, tant que tout les tests ne sont pas sur le graphique
 c) renderer les graphiques et retourner au menu principal.
+
+
+
+                #calcul des fonctions:
+                b_a_ratio = data[3]/data[2]
+                L = calculInductance(b_a_ratio)
+                R = calculResistance(data[0],data[2],data[3])
+                C = calculCapacitance(b_a_ratio)
+                G = calculConductance(sigma_c, b_a_ratio)
+
+                #calcul impedances
+                Z = calculImpedanceZ(data[0],R,L)
+                Y = calculAdmitanceY(data[0],C,G)
+
+                #calcul de alpha, beta et gamma
+                gamma = calculGamma(Y,Z)
+                alpha = calculAlpha(R,L,C)
+                beta = calculBeta(data[0],L,C)
+
+                #calcul de la vitesse de groupe et de V1 et V2
+                vg = calculVg(L,C)
+                Z_0 = calculZ_0(L,C)
+
+
+                #A faire
+                Z_L = calculZ_L()
+                V_1, V_2 = calculer_V1_V2(data[1],Z_0,Z_L)
+
+
+
+
+
+
+
+
 
 ==========
 Option 3.
