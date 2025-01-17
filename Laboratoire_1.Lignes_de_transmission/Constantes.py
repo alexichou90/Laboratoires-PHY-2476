@@ -30,3 +30,18 @@ epsilon_0 = 1/(mu_0*c**2)           #Permittivite du vide (F m^-1) ou (C^2 N^-1 
 F = N_A*e                           #Constante de Faraday (C mol^-1)
 
 amu = 1.660539040e-27               #Unite de masse atomique
+
+
+
+
+
+#Constantes du cable:
+LongeurCable = 152.40               #Longeur du cable (m)
+rayonA = 0.42                       #rayon a (mm)
+rayonB = 1.56                       #rayon b (mm)
+CapacitanceCable = 93.5             #capacitance du cable (pF/m)
+
+#constaten initialens
+Frequence = 1e4                     #Frequence de l'onde en Hz (10 kHz)
+potentielIncident = 10              #Potentiel incident
+#omega 
